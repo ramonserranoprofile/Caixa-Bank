@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, escape
 from app.services.auth_service import register_user, authenticate_user
 from app.utils.jwt_utils import verify_jwt
 auth_bp = Blueprint("auth", __name__)
@@ -46,8 +46,12 @@ def register():
 def login():
     data = request.get_json()
     response, status_code = authenticate_user(data)
-    return jsonify(response), status_code
-
+    response = {key: escape(str(value)) for key, value in response.items()}
+    sanitized_response = {key: escape(str(value)) for key, value in response.items()}
+    if status_code == 200:
+        sanitized_response["message"] = escape("Login successful")
+        return jsonify(sanitized_response), status_code
+    return jsonify({"error": "Invalid credentials"}), 401
 
 @auth_bp.route("/protected", methods=["GET"])
 @verify_jwt

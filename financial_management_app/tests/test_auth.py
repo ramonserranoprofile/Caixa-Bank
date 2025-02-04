@@ -1,74 +1,83 @@
 import requests
+import os
+from dotenv import load_dotenv
 
-BASE_URL = "http://127.0.0.1:5000"
+# Load environment variables from .env
+load_dotenv()
+
+test_pass = os.getenv("TEST_PASSWORD")
+BASE_URL = os.getenv("BASE_URL")
 
 
 def test_register():
     print("Testing Register...")
     payload = {
-        "email": "testuser@example.com",
-        "name": "Test User",
-        "password": "SecurePassword123",
+        "email": "testuser1@example.com",
+        "name": "Test User 1",
+        "password": test_pass,
     }
     headers = {"Content-Type": "application/json"}
-    response = requests.post(f"{BASE_URL}/register", json=payload, headers=headers)
 
-    # Mostrar la respuesta para depuración
-    print("Response Status Code:", response.status_code)
-    print("Response Text:", response.text)
-
-    # Intentar decodificar la respuesta JSON
     try:
-        response_json = response.json()
-        if not response_json:
-            print("Response JSON is None or invalid.")
-            return None
-    except ValueError:
-        print("Error decoding JSON.")
+        response = requests.post(f"{BASE_URL}/register", json=payload, headers=headers)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Error during registration: {e}")
         return None
 
-    # Verificar que la respuesta tenga el código de estado correcto (201)
+    try:
+        response_json = response.json()
+    except ValueError:
+        print("Invalid JSON response.")
+        return None
+
     if response.status_code == 201:
-        # Verificar que los campos "email" y "name" estén presentes en la respuesta
-        assert response_json.get("email") == payload["email"], "Email doesn't match"
-        assert response_json.get("name") == payload["name"], "Name doesn't match"
-
-        # Verificar si el campo "id" está presente
-        if response_json and "id" not in response_json:
-            print("Warning: 'id' is not returned in the response")
+        assert (
+            response_json.get("email") == payload["email"]
+        ), f"Expected email {payload['email']}, got {response_json.get('email')}"
+        assert (
+            response_json.get("name") == payload["name"]
+        ), f"Expected name {payload['name']}, got {response_json.get('name')}"
+        if "id" in response_json:
+            print(f"User created with ID: {response_json['id']}")
         else:
-            print(f"User created with id: {response_json['id']}")
-
+            print("Warning: 'id' is not returned in the response.")
         print("Register Test Passed!")
     else:
-        print("Register Test Failed!")
+        print(f"Register Test Failed! Status Code: {response.status_code}")
 
     return response_json
 
 
 def test_login():
     print("Testing Login...")
-    payload = {"email": "testuser@example.com", "password": "SecurePassword123"}
+    payload = {"email": "testuser1@example.com", "password": test_pass}
     headers = {"Content-Type": "application/json"}
-    response = requests.post(f"{BASE_URL}/login", json=payload, headers=headers)
 
-    # Mostrar la respuesta para depuración
-    print("Response Status Code:", response.status_code)
-    print("Response JSON:", response.json())
+    try:
+        response = requests.post(f"{BASE_URL}/login", json=payload, headers=headers)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Error during login: {e}")
+        return None
 
-    return response
+    try:
+        response_json = response.json()
+    except ValueError:
+        print("Invalid JSON response.")
+        return None
+
+    print("Login Test Passed!")
+    return response_json
 
 
 if __name__ == "__main__":
     print("Running Authentication Tests...")
-
-    # Realizar el test de registro
     register_response = test_register()
 
-    # Si el registro fue exitoso, proceder con el test de login
-    if register_response and register_response.get("email") == "testuser@example.com":
+    if register_response and register_response.get("email") == "testuser1@example.com":
         login_response = test_login()
-        if login_response.status_code == 200:
+        if login_response:
             print("Authentication Test Passed!")
         else:
             print("Login Test Failed!")
